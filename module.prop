@@ -1,0 +1,6 @@
+id=playstore_update_lock
+name=Play Store Self-Update Lock
+version=v1
+versionCode=1
+author=CEKA
+description=Monitors and reverts Google Play Store self-updates to the ROM stock baseline.
