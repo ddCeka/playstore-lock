@@ -39,10 +39,10 @@ sleep 5
 # Helper function to install/downgrade either stock single APK or custom single/split APKs
 install_target_playstore() {
     if [ "$LOCK_MODE" = "custom" ]; then
-        if [ "$BUNDLE_TYPE" = "single" ] && [ -f "$MODDIR/custom_apks/base.apk" ]; then
-            pm install -r -d "$MODDIR/custom_apks/base.apk" >> "$LOGFILE" 2>&1
+        if [ "$BUNDLE_TYPE" = "single" ] && [ -f "$MODDIR/customapks/base.apk" ]; then
+            pm install -r -d "$MODDIR/customapks/base.apk" >> "$LOGFILE" 2>&1
             return $?
-        elif [ "$BUNDLE_TYPE" = "split" ] && [ -d "$MODDIR/custom_apks" ]; then
+        elif [ "$BUNDLE_TYPE" = "split" ] && [ -d "$MODDIR/customapks" ]; then
             SESSION_OUT=$(pm install-create -r -d 2>&1)
             SESSION_ID=$(echo "$SESSION_OUT" | sed -n 's/.*\[\([0-9]*\)\].*/\1/p')
             if [ -z "$SESSION_ID" ]; then
@@ -50,7 +50,7 @@ install_target_playstore() {
                 return 1
             fi
             IDX=0
-            for split_apk in "$MODDIR/custom_apks/"*.apk; do
+            for split_apk in "$MODDIR/customapks/"*.apk; do
                 [ -f "$split_apk" ] || continue
                 SIZE=$(wc -c < "$split_apk" | tr -d ' ')
                 pm install-write -S "$SIZE" "$SESSION_ID" "split_${IDX}.apk" "$split_apk" >> "$LOGFILE" 2>&1 || {
@@ -77,7 +77,7 @@ install_target_playstore() {
 }
 
 if [ "$LOCK_MODE" = "custom" ]; then
-    if [ ! -d "$MODDIR/custom_apks" ]; then
+    if [ ! -d "$MODDIR/customapks" ]; then
         echo "  Custom APK directory missing in module!" >> "$LOGFILE"
         exit 1
     fi

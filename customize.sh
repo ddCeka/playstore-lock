@@ -17,24 +17,24 @@ if [ ! -f "$MODPATH/service.sh" ]; then
 fi
 
 # Auto-detect if custom APKs were bundled inside the ZIP
-if [ -d "$MODPATH/custom_apks" ] && [ -n "$(ls -A "$MODPATH/custom_apks/"*.apk 2>/dev/null)" ]; then
-    APK_COUNT=$(ls -1 "$MODPATH/custom_apks/"*.apk 2>/dev/null | wc -l)
+if [ -d "$MODPATH/customapks" ] && [ -n "$(ls -A "$MODPATH/customapks/"*.apk 2>/dev/null)" ]; then
+    APK_COUNT=$(ls -1 "$MODPATH/customapks/"*.apk 2>/dev/null | wc -l)
     ui_print "- Custom APKs detected ($APK_COUNT file(s))."
 
-    if [ "$APK_COUNT" -eq 1 ] && [ -f "$MODPATH/custom_apks/base.apk" ]; then
+    if [ "$APK_COUNT" -eq 1 ] && [ -f "$MODPATH/customapks/base.apk" ]; then
         DETECTED_BUNDLE="single"
     elif [ "$APK_COUNT" -gt 1 ]; then
         DETECTED_BUNDLE="split"
     else
-        abort "! Single custom APK must be named 'base.apk' inside custom_apks/."
+        abort "! Single custom APK must be named 'base.apk' inside customapks/."
     fi
 
     # Extract versionCode from base.apk using aapt/aapt2 if available
     CUSTOM_VER=""
     if command -v aapt >/dev/null 2>&1; then
-        CUSTOM_VER=$(aapt dump badging "$MODPATH/custom_apks/base.apk" 2>/dev/null | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p")
+        CUSTOM_VER=$(aapt dump badging "$MODPATH/customapks/base.apk" 2>/dev/null | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p")
     elif command -v aapt2 >/dev/null 2>&1; then
-        CUSTOM_VER=$(aapt2 dump badging "$MODPATH/custom_apks/base.apk" 2>/dev/null | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p")
+        CUSTOM_VER=$(aapt2 dump badging "$MODPATH/customapks/base.apk" 2>/dev/null | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p")
     fi
 
     # Patch service.sh automatically if a versionCode was detected
@@ -54,7 +54,7 @@ else
 
     if [ -z "$SYSTEM_APK" ]; then
         ui_print "! Warning: Stock Phonesky.apk/Vending.apk not found on system partitions."
-        ui_print "! Stock mode may fail unless custom_apks are configured later."
+        ui_print "! Stock mode may fail unless customapks are configured later."
     else
         ui_print "- Found stock APK: $SYSTEM_APK"
     fi

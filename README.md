@@ -31,16 +31,16 @@ BUNDLE_TYPE="none"         # Options: "none" | "single" | "split"
 | Variable | Value | Description |
 | :--- | :--- | :--- |
 | `LOCK_MODE` | `"stock"` | Automatically locates `Phonesky.apk` or `Vending.apk` on system partitions (`/system`, `/product`, `/system_ext`, etc.) and locks to its factory `versionCode`. |
-| `LOCK_MODE` | `"custom"` | Locks to a specific Play Store version located inside `$MODDIR/custom_apks/`. |
+| `LOCK_MODE` | `"custom"` | Locks to a specific Play Store version located inside `$MODDIR/customapks/`. |
 | `CUSTOM_TARGET_VER` | `<integer>` | The exact integer `versionCode` of your custom APK(s) (ignored in `stock` mode). |
-| `BUNDLE_TYPE` | `"single"` | Installs `$MODDIR/custom_apks/base.apk` using `pm install -r -d`. |
-| `BUNDLE_TYPE` | `"split"` | Installs all `*.apk` files inside `$MODDIR/custom_apks/` as a staged multi-APK session. |
+| `BUNDLE_TYPE` | `"single"` | Installs `$MODDIR/customapks/base.apk` using `pm install -r -d`. |
+| `BUNDLE_TYPE` | `"split"` | Installs all `*.apk` files inside `$MODDIR/customapks/` as a staged multi-APK session. |
 
 ## Installation
 
 ### Option 1: Flash via Magisk Manager (Recommended)
 1. Download the latest `PlayStore-Version-Lock-vX.X.X.zip` release (or package the repository files into a `.zip` archive).
-2. *(Optional — Custom Mode)* Before flashing, place your target Play Store `base.apk` (and any split `.apk` files) inside a `custom_apks/` folder at the root of the ZIP.
+2. *(Optional — Custom Mode)* Before flashing, place your target Play Store `base.apk` (and any split `.apk` files) inside a `customapks/` folder at the root of the ZIP.
 3. Open **Magisk Manager** -> **Modules** -> **Install from storage**.
 4. Select the `.zip` file and wait for the installer to finish.
 5. **Reboot** your device.
@@ -66,13 +66,13 @@ On reboot, `uninstall.sh` automatically stops the background daemon, deletes tem
 ```
 
 ### Directory Layout (Custom Mode)
-If using `LOCK_MODE="custom"`, create a `custom_apks` folder in the same directory as the script:
+If using `LOCK_MODE="custom"`, create a `customapks` folder in the same directory as the script:
 
 ```text
 /data/adb/modules/playstore-lock/
 ├── module.prop
 ├── service.sh
-└── custom_apks/
+└── customapks/
     ├── base.apk                  # Required for BUNDLE_TYPE="single"
     └── split_config.*.apk        # Additional splits for BUNDLE_TYPE="split"
 ```
@@ -98,6 +98,6 @@ su -c "ps -p \$(cat /data/local/tmp/playstore-daemon.pid)"
 
 ## Troubleshooting
 
-* **`SYSTEM_APK not found!` in log:** Your ROM stores the Play Store under a non-standard APK name or path. Switch to `LOCK_MODE="custom"` and supply the APK manually in `custom_apks/`.
+* **`SYSTEM_APK not found!` in log:** Your ROM stores the Play Store under a non-standard APK name or path. Switch to `LOCK_MODE="custom"` and supply the APK manually in `customapks/`.
 * **`Failed to get stock versionCode`:** Ensure `com.android.vending` is not completely uninstalled or frozen for user `0` before booting.
 * **Downgrade fails repeatedly:** If a direct downgrade (`pm install -r -d`) is rejected by Android due to signature or SDK mismatches, `stock` mode automatically falls back to `pm uninstall -k --user 0 com.android.vending` followed by a clean reinstall. Ensure your custom APKs share the official Google signing certificate.
