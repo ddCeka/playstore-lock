@@ -4,6 +4,17 @@
 LOGFILE="/data/local/tmp/playstore-lock-daemon.log"
 PIDFILE="/data/local/tmp/playstore-daemon.pid"
 
+# Enforce Magisk BusyBox environment for Magisk v20.4 - v23.x
+export ASH_STANDALONE=1
+for bb_dir in /sbin/.magisk/busybox /debug_ramdisk/.magisk/busybox /data/adb/magisk; do
+    if [ -d "$bb_dir" ]; then
+        case ":$PATH:" in
+            *":$bb_dir:"*) ;;
+            *) export PATH="$bb_dir:$PATH" ;;
+        esac
+    fi
+done
+
 # Stop the background daemon and any child sleep processes
 if [ -f "$PIDFILE" ]; then
     OLD_PID=$(cat "$PIDFILE" 2>/dev/null)

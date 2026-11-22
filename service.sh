@@ -36,7 +36,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 : > "$LOGFILE"
-log "Play Store Daemon Started (PID: $$, Mode: $LOCK_MODE)"
+log "Environment: PATH=$PATH | stat=$(command -v stat) | od=$(command -v od)"
 
 sleep 5
 
