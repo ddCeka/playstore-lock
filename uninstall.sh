@@ -15,7 +15,6 @@ for bb_dir in /sbin/.magisk/busybox /debug_ramdisk/.magisk/busybox /data/adb/mag
     fi
 done
 
-# Stop the background daemon and any child sleep processes
 if [ -f "$PIDFILE" ]; then
     OLD_PID=$(cat "$PIDFILE" 2>/dev/null)
     if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
@@ -26,7 +25,6 @@ if [ -f "$PIDFILE" ]; then
     fi
 fi
 
-# Remove temporary runtime files
 rm -rf "$PIDFILE" "$LOGFILE" "$LOGFILE.tmp" /data/local/tmp/playstore_stage_*
 
 SELF_UPDATE_COMPONENTS="

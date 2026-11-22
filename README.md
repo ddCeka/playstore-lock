@@ -5,7 +5,7 @@ A lightweight background shell daemon for rooted Android devices that prevents t
 ## Features
 
 * **Dual Lock Modes:** Supports locking to the device's built-in system APK (`stock` mode) or a user-supplied APK/App Bundle (`custom` mode).
-* **Zero-Dependency Custom APK Auto-Configuration:** `customize.sh` automatically detects single or split APKs inside `customapks/` during flashing and extracts `versionCode` directly from `AndroidManifest.xml` using pure BusyBox utilities (no `aapt`/`aapt2` required).
+* **Zero-Dependency Custom APK Auto-Configuration:** `customize.sh` automatically detects single or split APKs inside `customapks/` during flashing and extracts `versionCode` directly from `AndroidManifest.xml` using pure BusyBox utilities.
 * **SELinux-Safe Split & Single APK Staging:** Temporarily stages custom APKs in `/data/local/tmp/` with `0644` permissions and `u:object_r:shell_data_file:s0` context before running `pm install` or `pm install-create`, preventing SELinux denials on strict Android 10–11 kernels.
 * **Proactive Component Restrictions:** Disables known Play Store self-update and Instant App hygiene services (`DailyHygiene`, `SelfUpdateService`, `AppPreloadHygieneService`, `InstantAppHygieneService`) for user `0` on boot and after every restoration.
 * **Near-Zero Binder Overhead:** Monitors `/data/system/packages.xml` and cached APK paths via lightweight kernel `stat` checks paired with randomized sleep jitter (`50–70s`), invoking `pm`/`dumpsys` only when package changes occur or every 30 cycles.

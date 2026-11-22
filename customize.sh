@@ -12,26 +12,15 @@ if [ "$API" -lt 26 ]; then
     abort "! Unsupported Android version (API $API). Requires Android 8.0+."
 fi
 
-# Verify service.sh exists in the extracted module directory
 if [ ! -f "$MODPATH/service.sh" ]; then
     abort "! Missing service.sh inside module archive!"
 fi
 
-# Pure BusyBox binary AndroidManifest.xml versionCode extractor
 extract_version_code() {
     APK_FILE="$1"
     [ ! -f "$APK_FILE" ] && return 1
 
-    # Try aapt/aapt2 first if present on host/device
-    if command -v aapt >/dev/null 2>&1; then
-        VER=$(aapt dump badging "$APK_FILE" 2>/dev/null | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p")
-        [ -n "$VER" ] && echo "$VER" && return 0
-    elif command -v aapt2 >/dev/null 2>&1; then
-        VER=$(aapt2 dump badging "$APK_FILE" 2>/dev/null | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p")
-        [ -n "$VER" ] && echo "$VER" && return 0
-    fi
-
-    # Fallback: parse AXML versionCode attribute (resId 0x0101021b -> bytes 1b 02 01 01)
+    # Parse AXML versionCode attribute (resId 0x0101021b -> bytes 1b 02 01 01)
     # In AXML attributes: [nameNs(4)][nameIdx(4)][rawValue(4)][size(2)][0][dataType(1)][data(4)]
     # Here we match the 4-byte little-endian resource ID 1b020101 in the resource ID table or attribute
     HEX_STREAM=$(unzip -p "$APK_FILE" AndroidManifest.xml 2>/dev/null | od -An -tx1 -v | tr -d ' \n')
@@ -71,7 +60,6 @@ extract_version_code() {
     return 1
 }
 
-# Auto-detect if custom APKs were bundled inside the ZIP
 if [ -d "$MODPATH/customapks" ] && [ -n "$(ls -A "$MODPATH/customapks/"*.apk 2>/dev/null)" ]; then
     APK_COUNT=$(ls -1 "$MODPATH/customapks/"*.apk 2>/dev/null | wc -l)
     ui_print "- Custom APKs detected ($APK_COUNT file(s))."
@@ -86,7 +74,6 @@ if [ -d "$MODPATH/customapks" ] && [ -n "$(ls -A "$MODPATH/customapks/"*.apk 2>/
 
     CUSTOM_VER=$(extract_version_code "$MODPATH/customapks/base.apk")
 
-    # Patch service.sh automatically if a versionCode was detected
     if [ -n "$CUSTOM_VER" ]; then
         ui_print "- Detected custom versionCode: $CUSTOM_VER ($DETECTED_BUNDLE)"
         sed -i 's/^LOCK_MODE=.*/LOCK_MODE="custom"/' "$MODPATH/service.sh"

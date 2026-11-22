@@ -23,12 +23,10 @@ log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOGFILE"
 }
 
-# Wait until Android boot has completely finished
 while [ "$(getprop sys.boot_completed)" != "1" ]; do
     sleep 5
 done
 
-# Check if daemon is already running
 if [ -f "$PIDFILE" ]; then
     OLD_PID=$(cat "$PIDFILE" 2>/dev/null)
     if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
@@ -40,8 +38,8 @@ fi
 echo $$ > "$PIDFILE"
 
 cleanup() {
-    rm -rf "$PIDFILE" "/data/local/tmp/playstore_stage_$$"
-    log "Daemon exiting, removed PID file"
+    rm -rf "$PIDFILE" "$LOGFILE" "/data/local/tmp/playstore_stage_$$"
+    log "Daemon exiting, removed PID file and logs"
 }
 trap cleanup EXIT INT TERM
 
@@ -230,7 +228,6 @@ while true; do
     [ "$SLEEP_TIME" -lt 50 ] && SLEEP_TIME=50
     sleep "$SLEEP_TIME"
 
-    # Exit immediately if the user disabled or removed the module in Magisk Manager
     if [ -f "$MODDIR/disable" ] || [ -f "$MODDIR/remove" ] || [ ! -d "$MODDIR" ]; then
         log "Module disabled or marked for removal. Restoring components and stopping daemon..."
         restore_self_update_components
@@ -240,7 +237,6 @@ while true; do
     CHECK_COUNT=$((CHECK_COUNT + 1))
     checks_since_full=$((checks_since_full + 1))
 
-    # Fast filesystem-only check: did packages.xml or the cached APK path change?
     PKG_DB_CHANGED=0
     if [ -f "$PACKAGES_XML" ]; then
         CUR_PKG_XML_MTIME=$(stat -c %Y "$PACKAGES_XML" 2>/dev/null)
@@ -250,7 +246,6 @@ while true; do
         fi
     fi
 
-    # Only query Binder (pm list packages -d) when packages.xml changed or on periodic check
     if [ "$PKG_DB_CHANGED" -eq 1 ] || [ "$WAS_DISABLED" -eq 1 ] || [ "$checks_since_full" -ge "$FULL_CHECK_INTERVAL" ]; then
         if is_playstore_disabled; then
             if [ "$WAS_DISABLED" -eq 0 ]; then
