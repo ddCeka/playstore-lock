@@ -40,8 +40,9 @@ log "Environment: PATH=$PATH | stat=$(command -v stat) | od=$(command -v od)"
 
 sleep 5
 
+# Check primary user (user 0) specifically so Work Profiles/Dual Apps don't cause false pauses
 is_playstore_disabled() {
-    pm list packages -d 2>/dev/null | grep -q "^package:com\.android\.vending$"
+    pm list packages -d --user 0 2>/dev/null | grep -q "^package:com\.android\.vending$"
 }
 
 get_installed_ver() {
@@ -55,10 +56,10 @@ get_installed_ver() {
 install_target_playstore() {
     if [ "$LOCK_MODE" = "custom" ]; then
         if [ "$BUNDLE_TYPE" = "single" ] && [ -f "$MODDIR/customapks/base.apk" ]; then
-            pm install -r -d "$MODDIR/customapks/base.apk" >> "$LOGFILE" 2>&1
+            pm install -r -d --user 0 "$MODDIR/customapks/base.apk" >> "$LOGFILE" 2>&1
             return $?
         elif [ "$BUNDLE_TYPE" = "split" ] && [ -d "$MODDIR/customapks" ]; then
-            SESSION_OUT=$(pm install-create -r -d 2>&1)
+            SESSION_OUT=$(pm install-create -r -d --user 0 2>&1)
             SESSION_ID=$(echo "$SESSION_OUT" | sed -n 's/.*\[\([0-9]*\)\].*/\1/p')
             if [ -z "$SESSION_ID" ]; then
                 log "Failed to create pm install session: $SESSION_OUT"
@@ -78,13 +79,16 @@ install_target_playstore() {
         fi
         return 1
     else
-        # Stock mode
-        if pm install -r -d "$SYSTEM_APK" >> "$LOGFILE" 2>&1; then
+        # Stock mode: try direct downgrade for user 0 first
+        if pm install -r -d --user 0 "$SYSTEM_APK" >> "$LOGFILE" 2>&1; then
             return 0
         else
             pm uninstall -k --user 0 com.android.vending >> "$LOGFILE" 2>&1
             sleep 3
-            pm install -r "$SYSTEM_APK" >> "$LOGFILE" 2>&1
+            if pm install-existing --user 0 com.android.vending >> "$LOGFILE" 2>&1; then
+                return 0
+            fi
+            pm install -r --user 0 "$SYSTEM_APK" >> "$LOGFILE" 2>&1
             return $?
         fi
     fi

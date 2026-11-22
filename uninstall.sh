@@ -35,5 +35,5 @@ rm -f "$PIDFILE" "$LOGFILE" "$LOGFILE.tmp"
     while [ "$(getprop sys.boot_completed)" != "1" ]; do
         sleep 5
     done
-    cmd package set-app-standby-bucket com.android.vending active >/dev/null 2>&1
+    cmd package set-app-standby-bucket --user 0 com.android.vending active >/dev/null 2>&1
 ) &
