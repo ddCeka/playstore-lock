@@ -71,6 +71,13 @@ disable_self_update_components() {
     log "Applied self-update component restrictions"
 }
 
+restore_self_update_components() {
+    for comp in $SELF_UPDATE_COMPONENTS; do
+        pm default-state --user 0 "$comp" >/dev/null 2>&1
+    done
+    log "Restored self-update component default states"
+}
+
 get_installed_ver() {
     dumpsys package com.android.vending 2>/dev/null \
         | awk '/^Packages:/,/^Hidden system packages:/' \
@@ -222,6 +229,13 @@ while true; do
     SLEEP_TIME=$(( SLEEP_INTERVAL + J ))
     [ "$SLEEP_TIME" -lt 50 ] && SLEEP_TIME=50
     sleep "$SLEEP_TIME"
+
+    # Exit immediately if the user disabled or removed the module in Magisk Manager
+    if [ -f "$MODDIR/disable" ] || [ -f "$MODDIR/remove" ] || [ ! -d "$MODDIR" ]; then
+        log "Module disabled or marked for removal. Restoring components and stopping daemon..."
+        restore_self_update_components
+        exit 0
+    fi
 
     CHECK_COUNT=$((CHECK_COUNT + 1))
     checks_since_full=$((checks_since_full + 1))
