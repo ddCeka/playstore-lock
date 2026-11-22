@@ -170,10 +170,14 @@ fi
 CHECK_COUNT=0
 SLEEP_INTERVAL=60
 JITTER=10
-FULL_CHECK_INTERVAL=15
+FULL_CHECK_INTERVAL=30
 checks_since_full=$FULL_CHECK_INTERVAL
 LAST_MTIME=""
+LAST_PKG_XML_MTIME=""
 WAS_DISABLED=0
+
+PACKAGES_XML="/data/system/packages.xml"
+[ -f "$PACKAGES_XML" ] && LAST_PKG_XML_MTIME=$(stat -c %Y "$PACKAGES_XML" 2>/dev/null)
 
 APK_PATH=$(pm path com.android.vending 2>/dev/null | head -n 1 | cut -d':' -f2)
 [ -n "$APK_PATH" ] && [ -f "$APK_PATH" ] && LAST_MTIME=$(stat -c %Y "$APK_PATH" 2>/dev/null)
@@ -186,26 +190,45 @@ while true; do
     [ "$SLEEP_TIME" -lt 50 ] && SLEEP_TIME=50
     sleep "$SLEEP_TIME"
 
-    # Pause checks while Play Store is disabled
-    if is_playstore_disabled; then
-        if [ "$WAS_DISABLED" -eq 0 ]; then
-            log "Play Store is disabled. Pausing checks until re-enabled..."
-            WAS_DISABLED=1
-        fi
-        sleep 60
-        continue
-    elif [ "$WAS_DISABLED" -eq 1 ]; then
-        log "Play Store re-enabled! Resuming version checks..."
-        WAS_DISABLED=0
-        checks_since_full=$FULL_CHECK_INTERVAL
-    fi
-
     CHECK_COUNT=$((CHECK_COUNT + 1))
     checks_since_full=$((checks_since_full + 1))
 
-    APK_PATH=$(pm path com.android.vending 2>/dev/null | head -n 1 | cut -d':' -f2)
+    # Fast filesystem-only check: did packages.xml or the cached APK path change?
+    PKG_DB_CHANGED=0
+    if [ -f "$PACKAGES_XML" ]; then
+        CUR_PKG_XML_MTIME=$(stat -c %Y "$PACKAGES_XML" 2>/dev/null)
+        if [ -n "$CUR_PKG_XML_MTIME" ] && [ "$CUR_PKG_XML_MTIME" != "$LAST_PKG_XML_MTIME" ]; then
+            PKG_DB_CHANGED=1
+            LAST_PKG_XML_MTIME="$CUR_PKG_XML_MTIME"
+        fi
+    fi
+
+    # Only query Binder (pm list packages -d) when packages.xml changed or on periodic check
+    if [ "$PKG_DB_CHANGED" -eq 1 ] || [ "$WAS_DISABLED" -eq 1 ] || [ "$checks_since_full" -ge "$FULL_CHECK_INTERVAL" ]; then
+        if is_playstore_disabled; then
+            if [ "$WAS_DISABLED" -eq 0 ]; then
+                log "Play Store is disabled. Pausing checks until re-enabled..."
+                WAS_DISABLED=1
+            fi
+            sleep 60
+            continue
+        elif [ "$WAS_DISABLED" -eq 1 ]; then
+            log "Play Store re-enabled! Resuming version checks..."
+            WAS_DISABLED=0
+            checks_since_full=$FULL_CHECK_INTERVAL
+        fi
+    fi
 
     MTIME_CHANGED=0
+    # If cached APK_PATH vanished (moved during update) or packages.xml changed, refresh APK_PATH
+    if [ -z "$APK_PATH" ] || [ ! -f "$APK_PATH" ] || [ "$PKG_DB_CHANGED" -eq 1 ]; then
+        NEW_APK_PATH=$(pm path com.android.vending 2>/dev/null | head -n 1 | cut -d':' -f2)
+        if [ -n "$NEW_APK_PATH" ] && [ "$NEW_APK_PATH" != "$APK_PATH" ]; then
+            APK_PATH="$NEW_APK_PATH"
+            MTIME_CHANGED=1
+        fi
+    fi
+
     if [ -n "$APK_PATH" ] && [ -f "$APK_PATH" ]; then
         APK_MTIME=$(stat -c %Y "$APK_PATH" 2>/dev/null)
         if [ -n "$APK_MTIME" ] && [ "$APK_MTIME" != "$LAST_MTIME" ]; then
@@ -242,6 +265,7 @@ while true; do
         sleep 5
         APK_PATH=$(pm path com.android.vending 2>/dev/null | head -n 1 | cut -d':' -f2)
         [ -f "$APK_PATH" ] && LAST_MTIME=$(stat -c %Y "$APK_PATH" 2>/dev/null)
+        [ -f "$PACKAGES_XML" ] && LAST_PKG_XML_MTIME=$(stat -c %Y "$PACKAGES_XML" 2>/dev/null)
     fi
 
     if [ $((CHECK_COUNT % 120)) -eq 0 ] && [ -f "$LOGFILE" ]; then
