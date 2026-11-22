@@ -40,7 +40,7 @@ fi
 echo $$ > "$PIDFILE"
 
 cleanup() {
-    rm -f "$PIDFILE"
+    rm -rf "$PIDFILE" "/data/local/tmp/playstore_stage_$$"
     log "Daemon exiting, removed PID file"
 }
 trap cleanup EXIT INT TERM
@@ -81,28 +81,61 @@ get_installed_ver() {
 # Helper function to install/downgrade either stock single APK or custom single/split APKs
 install_target_playstore() {
     if [ "$LOCK_MODE" = "custom" ]; then
+        STAGE_DIR="/data/local/tmp/playstore_stage_$$"
+        rm -rf "$STAGE_DIR"
+        mkdir -p "$STAGE_DIR" || {
+            log "Failed to create staging directory: $STAGE_DIR"
+            return 1
+        }
+        chmod 0755 "$STAGE_DIR"
+
         if [ "$BUNDLE_TYPE" = "single" ] && [ -f "$MODDIR/customapks/base.apk" ]; then
-            pm install -r -d --user 0 "$MODDIR/customapks/base.apk" >> "$LOGFILE" 2>&1
-            return $?
+            cp -f "$MODDIR/customapks/base.apk" "$STAGE_DIR/base.apk" || {
+                rm -rf "$STAGE_DIR"
+                return 1
+            }
+            chmod 0644 "$STAGE_DIR/base.apk"
+            chcon u:object_r:shell_data_file:s0 "$STAGE_DIR/base.apk" >/dev/null 2>&1
+
+            pm install -r -d --user 0 "$STAGE_DIR/base.apk" >> "$LOGFILE" 2>&1
+            INSTALL_RET=$?
+            rm -rf "$STAGE_DIR"
+            return $INSTALL_RET
+
         elif [ "$BUNDLE_TYPE" = "split" ] && [ -d "$MODDIR/customapks" ]; then
             SESSION_OUT=$(pm install-create -r -d --user 0 2>&1)
             SESSION_ID=$(echo "$SESSION_OUT" | sed -n 's/.*\[\([0-9]*\)\].*/\1/p')
             if [ -z "$SESSION_ID" ]; then
                 log "Failed to create pm install session: $SESSION_OUT"
+                rm -rf "$STAGE_DIR"
                 return 1
             fi
             for split_apk in "$MODDIR/customapks/"*.apk; do
                 [ -f "$split_apk" ] || continue
-                SIZE=$(wc -c < "$split_apk" | tr -d ' ')
                 NAME=$(basename "$split_apk")
-                pm install-write -S "$SIZE" "$SESSION_ID" "$NAME" "$split_apk" >> "$LOGFILE" 2>&1 || {
+                STAGED_APK="$STAGE_DIR/$NAME"
+                cp -f "$split_apk" "$STAGED_APK" || {
                     pm install-abandon "$SESSION_ID" >/dev/null 2>&1
+                    rm -rf "$STAGE_DIR"
+                    return 1
+                }
+                chmod 0644 "$STAGED_APK"
+                chcon u:object_r:shell_data_file:s0 "$STAGED_APK" >/dev/null 2>&1
+
+                SIZE=$(wc -c < "$STAGED_APK" | tr -d ' ')
+                pm install-write -S "$SIZE" "$SESSION_ID" "$NAME" "$STAGED_APK" >> "$LOGFILE" 2>&1 || {
+                    pm install-abandon "$SESSION_ID" >/dev/null 2>&1
+                    rm -rf "$STAGE_DIR"
                     return 1
                 }
             done
             pm install-commit "$SESSION_ID" >> "$LOGFILE" 2>&1
-            return $?
+            INSTALL_RET=$?
+            rm -rf "$STAGE_DIR"
+            return $INSTALL_RET
         fi
+
+        rm -rf "$STAGE_DIR"
         return 1
     else
         # Stock mode: try direct downgrade for user 0 first

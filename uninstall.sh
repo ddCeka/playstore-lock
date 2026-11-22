@@ -27,7 +27,7 @@ if [ -f "$PIDFILE" ]; then
 fi
 
 # Remove temporary runtime files
-rm -f "$PIDFILE" "$LOGFILE" "$LOGFILE.tmp"
+rm -rf "$PIDFILE" "$LOGFILE" "$LOGFILE.tmp" /data/local/tmp/playstore_stage_*
 
 SELF_UPDATE_COMPONENTS="
 com.android.vending/com.google.android.finsky.services.DailyHygiene
