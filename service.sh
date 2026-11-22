@@ -1,6 +1,16 @@
 #!/system/bin/sh
 # Compatible with Magisk v20.4 - v23.x (Android 8 - 11+)
 
+export ASH_STANDALONE=1
+for bb_dir in /sbin/.magisk/busybox /debug_ramdisk/.magisk/busybox /data/adb/magisk; do
+    if [ -d "$bb_dir" ]; then
+        case ":$PATH:" in
+            *":$bb_dir:"*) ;;
+            *) export PATH="$bb_dir:$PATH" ;;
+        esac
+    fi
+done
+
 MODDIR=${0%/*}
 LOGFILE="/data/local/tmp/playstore-lock-daemon.log"
 PIDFILE="/data/local/tmp/playstore-daemon.pid"
@@ -43,6 +53,22 @@ sleep 5
 # Check primary user (user 0) specifically so Work Profiles/Dual Apps don't cause false pauses
 is_playstore_disabled() {
     pm list packages -d --user 0 2>/dev/null | grep -q "^package:com\.android\.vending$"
+}
+
+SELF_UPDATE_COMPONENTS="
+com.android.vending/com.google.android.finsky.services.DailyHygiene
+com.android.vending/com.google.android.finsky.hygiene.DailyHygiene\$DailyHygieneService
+com.android.vending/com.google.android.finsky.selfupdate.SelfUpdateService
+com.android.vending/com.google.android.finsky.selfupdate.SelfUpdateReceiver
+com.android.vending/com.google.android.finsky.instantapps.hint.AppPreloadHygieneService
+com.android.vending/com.google.android.finsky.instantapps.InstantAppHygieneService
+"
+
+disable_self_update_components() {
+    for comp in $SELF_UPDATE_COMPONENTS; do
+        pm disable --user 0 "$comp" >/dev/null 2>&1
+    done
+    log "Applied self-update component restrictions"
 }
 
 get_installed_ver() {
@@ -136,6 +162,7 @@ if ! is_playstore_disabled; then
         install_target_playstore
         sleep 10
     fi
+    disable_self_update_components
 else
     log "Play Store is disabled at boot; skipping initial alignment."
 fi
@@ -207,6 +234,7 @@ while true; do
 
         if install_target_playstore; then
             log "Successfully restored to $TARGET_VER"
+            disable_self_update_components
         else
             log "Restoration failed on check #$CHECK_COUNT"
         fi

@@ -29,11 +29,22 @@ fi
 # Remove temporary runtime files
 rm -f "$PIDFILE" "$LOGFILE" "$LOGFILE.tmp"
 
-# Reset app standby bucket only after Android boot is completed
-# (Avoids blocking early boot when Magisk executes uninstall.sh)
+SELF_UPDATE_COMPONENTS="
+com.android.vending/com.google.android.finsky.services.DailyHygiene
+com.android.vending/com.google.android.finsky.hygiene.DailyHygiene\$DailyHygieneService
+com.android.vending/com.google.android.finsky.selfupdate.SelfUpdateService
+com.android.vending/com.google.android.finsky.selfupdate.SelfUpdateReceiver
+com.android.vending/com.google.android.finsky.instantapps.hint.AppPreloadHygieneService
+com.android.vending/com.google.android.finsky.instantapps.InstantAppHygieneService
+"
+
+# Reset app standby bucket and restore components after boot completes
 (
     while [ "$(getprop sys.boot_completed)" != "1" ]; do
         sleep 5
+    done
+    for comp in $SELF_UPDATE_COMPONENTS; do
+        pm default-state --user 0 "$comp" >/dev/null 2>&1
     done
     cmd package set-app-standby-bucket --user 0 com.android.vending active >/dev/null 2>&1
 ) &
